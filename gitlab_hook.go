@@ -96,7 +96,7 @@ func (g GitlabHook) handlePipeline(body []byte, repo *Repo) error {
 	
 	pipelineStatus := push.Attributes.Status
 	if pipelineStatus != "success" {
-	  return errors.New("this pipeline event was not a success")
+		return hookIgnoredError{hookType: hookName(g), err: fmt.Errorf("status is not success: %v", pipelineStatus)}
 	}
 
 	// extract the branch being pushed from the ref string
