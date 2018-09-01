@@ -12,8 +12,13 @@ import (
 // GitlabHook is webhook for gitlab.com
 type GitlabHook struct{}
 
-type glPush struct {
-	Ref string `json:"ref"`
+type PipelineEventAttributes struct {
+  Ref string `json:"ref"`
+  Status string `json:"status"`
+}
+
+type glPipelineEvent struct {
+  Attributes PipelineEventAttributes `json:"object_attributes"`
 }
 
 // DoesHandle satisfies hookHandler.
@@ -49,8 +54,8 @@ func (g GitlabHook) Handle(w http.ResponseWriter, r *http.Request, repo *Repo) (
 	}
 
 	switch event {
-	case "Push Hook":
-		err = g.handlePush(body, repo)
+	case "Pipeline Hook":
+		err = g.handlePipeline(body, repo)
 		if !hookIgnored(err) && err != nil {
 			return http.StatusBadRequest, err
 		}
@@ -81,17 +86,22 @@ func (g GitlabHook) handleToken(r *http.Request, body []byte, secret string) err
 	return nil
 }
 
-func (g GitlabHook) handlePush(body []byte, repo *Repo) error {
-	var push glPush
+func (g GitlabHook) handlePipeline(body []byte, repo *Repo) error {
+	var push glPipelineEvent
 
 	err := json.Unmarshal(body, &push)
 	if err != nil {
 		return err
 	}
+	
+	pipelineStatus := push.Attributes.Status
+	if pipelineStatus != "success" {
+	  return errors.New("this pipeline event was not a success")
+	}
 
 	// extract the branch being pushed from the ref string
 	// and if it matches with our locally tracked one, pull.
-	refSlice := strings.Split(push.Ref, "/")
+	refSlice := strings.Split(push.Attributes.Ref, "/")
 	if len(refSlice) != 3 {
 		return errors.New("the push request contained an invalid reference string")
 	}
