@@ -99,19 +99,12 @@ func (g GitlabHook) handlePipeline(body []byte, repo *Repo) error {
 		return hookIgnoredError{hookType: hookName(g), err: fmt.Errorf("status is not success: %v", pipelineStatus)}
 	}
 
-	// extract the branch being pushed from the ref string
-	// and if it matches with our locally tracked one, pull.
-	refSlice := strings.Split(push.Attributes.Ref, "/")
-	if len(refSlice) != 3 {
-		return errors.New("the push request contained an invalid reference string")
-	}
-
-	branch := refSlice[2]
+	branch := push.Attributes.Ref
 	if branch != repo.Branch {
 		return hookIgnoredError{hookType: hookName(g), err: fmt.Errorf("found different branch %v", branch)}
 	}
 
-	Logger().Print("Received pull notification for the tracking branch, updating...\n")
+	Logger().Print("Received pipeline notification for the tracking branch, updating...\n")
 	repo.Pull()
 
 	return nil
